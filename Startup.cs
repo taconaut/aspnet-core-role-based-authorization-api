@@ -8,6 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Filters;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace WebApi
 {
@@ -51,6 +53,20 @@ namespace WebApi
                 };
             });
 
+            // configure swagger (only required for testing)
+            services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new Info { Title = "WebApi", Version = "v1" });
+                options.AddSecurityDefinition("oauth2", new ApiKeyScheme
+                {
+                    Description = "Standard Authorization header using the Bearer scheme. Example: \"bearer {token}\"",
+                    In = "header",
+                    Name = "Authorization",
+                    Type = "apiKey"
+                });
+                options.OperationFilter<SecurityRequirementsOperationFilter>();
+            });
+
             // configure DI for application services
             services.AddScoped<IUserService, UserService>();
         }
@@ -65,7 +81,11 @@ namespace WebApi
                 .AllowAnyHeader());
 
             app.UseAuthentication();
-            
+
+            // swagger (only required for testing)
+            app.UseSwagger();
+            app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1"); });
+
             app.UseMvc();
         }
     }
