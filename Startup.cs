@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using WebApi.Entities;
 
 namespace WebApi
 {
@@ -49,6 +51,17 @@ namespace WebApi
                     ValidateIssuer = false,
                     ValidateAudience = false
                 };
+            });
+
+            // configure policies
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy(Policies.IsOwner, policy =>
+                    policy.RequireAssertion(ctx =>
+                    {
+                        var userId = ctx.Resource.ToString();
+                        return ctx.User.HasClaim(claim => ctx.User.IsInRole(Role.Admin) || Equals(claim.Type, ClaimTypes.Name) && Equals(claim.Value, userId));
+                    }));
             });
 
             // configure DI for application services

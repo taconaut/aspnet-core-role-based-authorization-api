@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using WebApi.Services;
 using WebApi.Entities;
@@ -11,10 +12,12 @@ namespace WebApi.Controllers
     public class UsersController : ControllerBase
     {
         private IUserService _userService;
+        private readonly IAuthorizationService _authorizationService;
 
-        public UsersController(IUserService userService)
+        public UsersController(IUserService userService, IAuthorizationService authorizationService)
         {
             _userService = userService;
+            _authorizationService = authorizationService;
         }
 
         [AllowAnonymous]
@@ -38,18 +41,19 @@ namespace WebApi.Controllers
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetById(int id)
+        public async Task<IActionResult> GetById(int id)
         {
-            var user =  _userService.GetById(id);
-
-            if (user == null) {
-                return NotFound();
+            // only allow admins to access other user records
+            var isAuthorized = await _authorizationService.AuthorizeAsync(User, id, Policies.IsOwner);
+            if (!isAuthorized.Succeeded)
+            {
+                return Forbid();
             }
 
-            // only allow admins to access other user records
-            var currentUserId = int.Parse(User.Identity.Name);
-            if (id != currentUserId && !User.IsInRole(Role.Admin)) {
-                return Forbid();
+            var user = _userService.GetById(id);
+            if (user == null)
+            {
+                return NotFound();
             }
 
             return Ok(user);
